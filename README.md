@@ -1,4 +1,98 @@
-ii# import com.fasterxml.jackson.databind.JsonNode;
+1. Unit Tests (CookieFilterTest.java):import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+
+class CookieFilterTest {
+
+    @Mock
+    private FilterConfig filterConfig;
+
+    @BeforeEach
+    void setup() {
+        MockitoAnnotations.initMocks(this);
+    }
+
+    @Test
+    void testCookieIsAddedIfNotPresent() throws Exception {
+        CookieFilter cookieFilter = new CookieFilter();
+        cookieFilter.init(filterConfig);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain filterChain = new MockFilterChain();
+
+        cookieFilter.doFilter(request, response, filterChain);
+
+        Cookie[] cookies = response.getCookies();
+        boolean cookieFound = false;
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("yourCookieName".equals(cookie.getName())) {
+                    cookieFound = true;
+                    break;
+                }
+            }
+        }
+
+        assertTrue(cookieFound);
+    }
+
+    @Test
+    void testCookieIsNotAddedIfAlreadyPresent() throws Exception {
+        CookieFilter cookieFilter = new CookieFilter();
+        cookieFilter.init(filterConfig);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie("yourCookieName", "existingValue")); // Add an existing cookie
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain filterChain = new MockFilterChain();
+
+        cookieFilter.doFilter(request, response, filterChain);
+
+        Cookie[] cookies = response.getCookies();
+        boolean cookieFound = false;
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("yourCookieName".equals(cookie.getName())) {
+                    cookieFound = true;
+                    break;
+                }
+            }
+        }
+
+        assertFalse(cookieFound);
+    }
+}2. Integration Tests (ApplicationIntegrationTest.java):import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class ApplicationIntegrationTest {
+
+    @LocalServerPort
+    private int port;
+
+    private final TestRestTemplate restTemplate = new TestRestTemplate();
+
+    @Test
+    void testCookieIsAddedIfNotPresent() {
+        ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/your-endpoint", String.class);
+
+        HttpHeaders headers = response.getHeaders();
+        boolean cookieFound = headers.containsKey("Set-Cookie");
+
+        assertTrue(cookieFound);
+    }
+}# import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 // Retrieve the blob data from the database as a byte array
@@ -127,6 +221,70 @@ spring.io/guides/tutorials/spring-boot-kotlin/
 profile picture
 ok provide. latest versions as well and provide consolidated response 
 View other drafts
+
+
+
+
+You can create a filter in a Spring Boot application to add a cookie if it's not present. Here's a basic example of how you can achieve this:
+
+```java
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.annotation.WebFilter;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebFilter("/*")
+public class CookieFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+        // Check if the desired cookie is present
+        boolean cookieFound = false;
+        Cookie[] cookies = httpRequest.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("yourCookieName".equals(cookie.getName())) {
+                    cookieFound = true;
+                    break;
+                }
+            }
+        }
+
+        // If the cookie is not present, add it
+        if (!cookieFound) {
+            Cookie newCookie = new Cookie("yourCookieName", "cookieValue");
+            httpResponse.addCookie(newCookie);
+        }
+
+        chain.doFilter(request, response);
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        // Initialization code if needed
+    }
+
+    @Override
+    public void destroy() {
+        // Cleanup code if needed
+    }
+}
+```
+
+In this example, the filter checks if a cookie with the name "yourCookieName" is present in incoming requests. If not, it adds a new cookie with the name and value you specify. Make sure to configure this filter appropriately in your Spring Boot application, for example by specifying the URL patterns you want the filter to be applied to.
+
+Remember to replace `"yourCookieName"` and `"cookieValue"` with your specific cookie name and value.
 
 
 
