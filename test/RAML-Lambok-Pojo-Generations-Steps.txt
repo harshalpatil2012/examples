@@ -1,4 +1,4 @@
-iiSummary of AWS Cost Optimization and Redis Cost Reduction
+iiiiSummary of AWS Cost Optimization and Redis Cost Reduction
 
 Month	Redis Node Type	Expense Reduction (USD)	Baseline Cost (July)
 May to June	cache.mS.large	$4,770	N/A
@@ -49,3 +49,75 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .csrf().disable();
     }
 }This configuration allows all requests and uses the custom AuthenticationEntryPoint to handle authentication issues and send JSON responses.
+
+
+
+To pass a generic error details object with error code and error message properties in the JSON response, you can create a custom error response class and use it in your Spring Security configuration. Here's how you can do that:
+
+1. Create a custom error response class, e.g., `ErrorResponse`:
+
+```java
+public class ErrorResponse {
+    private int errorCode;
+    private String errorMessage;
+
+    public ErrorResponse(int errorCode, String errorMessage) {
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
+    }
+
+    // Getters and setters for errorCode and errorMessage
+}
+```
+
+2. Modify your custom authentication entry point to use the `ErrorResponse` class for the error response:
+
+```java
+@Component
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
+        // Customize the error response as a JSON object
+        response.setContentType("application/json");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ErrorResponse errorResponse = new ErrorResponse(401, "Unauthorized: " + authException.getMessage());
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.writeValue(response.getWriter(), errorResponse);
+    }
+}
+```
+
+3. Configure Spring Security to permit all requests and use the custom authentication entry point:
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/**").permitAll()
+                .anyRequest().authenticated()
+            .and()
+            .exceptionHandling().authenticationEntryPoint(customAuthenticationEntryPoint)
+            .and()
+            .csrf().disable();
+    }
+}
+```
+
+4. When you encounter an authentication issue, you can throw exceptions with an appropriate message. For example:
+
+```java
+throw new BadCredentialsException("Invalid username or password");
+```
+
+The custom `AuthenticationEntryPoint` will handle this exception and send a JSON response with the error code and message you provided.
+
+With this setup, you can send a generic error response with an error code and error message in JSON format to the UI when authentication issues occur. You can further customize the `ErrorResponse` class to include additional fields if needed.
