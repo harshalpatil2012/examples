@@ -476,3 +476,35 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .csrf().disable();
     }
 }This configuration allows all requests and uses the custom AuthenticationEntryPoint to handle authentication issues and send JSON responses.Make sure you have the necessary dependencies, like Jackson ObjectMapper, for working with JSON.
+
+
+
+permit all requests and send error details as JSON responses back to the UI when issues occur, you can use Spring Security to achieve this. Here's how you can configure Spring Security to permit all requests and customize error responses in JSON format:Create a custom exception handling component:@Component
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
+        // Customize the error response as a JSON object
+        response.setContentType("application/json");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.writeValue(response.getWriter(), "Your custom error details");
+    }
+}This component handles unauthorized requests and sends a JSON response with error details. You can customize the error message and format as needed.Configure Spring Security to permit all requests and use the custom authentication entry point:@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/**").permitAll()
+                .anyRequest().authenticated()
+            .and()
+            .exceptionHandling().authenticationEntryPoint(customAuthenticationEntryPoint)
+            .and()
+            .csrf().disable();
+    }
+}This configuration allows all requests and uses the custom AuthenticationEntryPoint to handle authentication issues and send JSON responses.
