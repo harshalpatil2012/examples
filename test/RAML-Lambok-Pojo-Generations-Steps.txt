@@ -121,3 +121,180 @@ throw new BadCredentialsException("Invalid username or password");
 The custom `AuthenticationEntryPoint` will handle this exception and send a JSON response with the error code and message you provided.
 
 With this setup, you can send a generic error response with an error code and error message in JSON format to the UI when authentication issues occur. You can further customize the `ErrorResponse` class to include additional fields if needed.
+
+
+
+Certainly, let's add more scenario-based tests to both the unit and integration test files.
+
+**Comprehensive Unit Tests:**
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockFilterConfig;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+
+public class SecurityHeadersFilterTest {
+
+    private SecurityHeadersFilter filter;
+    private MockFilterConfig filterConfig;
+    private MockHttpServletRequest request;
+    private MockHttpServletResponse response;
+
+    @BeforeEach
+    public void setUp() {
+        filter = new SecurityHeadersFilter();
+        filterConfig = new MockFilterConfig();
+        request = new MockHttpServletRequest();
+        response = new MockHttpServletResponse();
+    }
+
+    @Test
+    public void testPositiveScenario() throws Exception {
+        filter.init(filterConfig);
+        MockFilterChain filterChain = new MockFilterChain();
+        
+        filter.doFilter(request, response, filterChain);
+
+        // Verify that the secure headers are set as expected
+        Mockito.verify(response).setHeader("X-Content-Type-Options", "nosniff");
+        Mockito.verify(response).setHeader("X-Frame-Options", "DENY");
+        Mockito.verify(response).setHeader("X-XSS-Protection", "1; mode=block");
+        Mockito.verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+        Mockito.verify(response).setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        Mockito.verify(response).setHeader("Referrer-Policy", "same-origin");
+
+        // Verify that the filter chain continues
+        Mockito.verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    public void testNegativeScenario() throws Exception {
+        filter.init(filterConfig);
+        MockFilterChain filterChain = new MockFilterChain();
+        
+        // Simulate a scenario where the filter is supposed to block access (e.g., due to a security condition)
+        // Insert your negative scenario logic here, and ensure the filter behaves as expected.
+
+        // Verify that the filter chain is not called
+        Mockito.verify(filterChain, Mockito.never()).doFilter(request, response);
+    }
+
+    @Test
+    public void testCustomCacheControlHeader() throws Exception {
+        filter.init(filterConfig);
+        MockFilterChain filterChain = new MockFilterChain();
+        
+        // Simulate a scenario where you customize the Cache-Control header
+        // Set up your request and response objects accordingly.
+
+        filter.doFilter(request, response, filterChain);
+
+        // Verify that the Cache-Control header is set as expected in this custom scenario
+        Mockito.verify(response).setHeader("Cache-Control", "custom-cache-settings");
+    }
+}
+```
+
+**Comprehensive Integration Tests:**
+
+```java
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class SecurityHeadersFilterIntegrationTest {
+
+    @LocalServerPort
+    private int port;
+
+    private final TestRestTemplate restTemplate = new TestRestTemplate();
+
+    @Test
+    public void testPositiveScenario() {
+        // Send an HTTP request to your application and verify that the headers are set correctly
+        ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/your-endpoint", String.class);
+
+        // Assertions for positive scenarios
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        // Verify that the response headers contain the expected security headers
+        assertTrue(response.getHeaders().containsKey("X-Content-Type-Options"));
+        assertTrue(response.getHeaders().containsKey("X-Frame-Options"));
+        assertTrue(response.getHeaders().containsKey("X-XSS-Protection"));
+        assertTrue(response.getHeaders().containsKey("Strict-Transport-Security"));
+        assertTrue(response.getHeaders().containsKey("Cache-Control"));
+        assertTrue(response.getHeaders().containsKey("Referrer-Policy"));
+    }
+
+    @Test
+    public void testNegativeScenario() {
+        // Send an HTTP request to your application and verify the behavior in a negative scenario (e.g., access blocked)
+        // Insert your negative scenario logic here, and ensure the filter behaves as expected.
+    }
+
+    @Test
+    public void testCustomCacheControlHeader() {
+        // Send an HTTP request and check that the Cache-Control header is set as expected
+        ResponseEntity<String> response = restTemplate.getForEntity("http://localhost:" + port + "/your-endpoint", String.class);
+
+        // Assertions for the custom cache control scenario
+        assertEquals("custom-cache-settings", response.getHeaders().getFirst("Cache-Control"));
+    }
+}
+```
+
+These additional tests cover positive, negative, and custom scenarios for both the unit and integration tests. You can continue to add more test cases and scenarios as needed to thoroughly test your `SecurityHeadersFilter`.
+
+
+
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Component;
+
+@Component
+public class SecurityHeadersFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+        // Set secure headers
+        httpResponse.setHeader("X-Content-Type-Options", "nosniff");
+        httpResponse.setHeader("X-Frame-Options", "DENY");
+        httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
+        httpResponse.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+
+        // Set Cache-Control header for no caching
+        httpResponse.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+
+        // Set the Referrer-Policy header
+        httpResponse.setHeader("Referrer-Policy", "same-origin");
+
+        // Continue the filter chain
+        chain.doFilter(request, response);
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        // Initialization logic, if needed
+    }
+
+    @Override
+    public void destroy() {
+        // Cleanup logic, if needed
+    }
+}
