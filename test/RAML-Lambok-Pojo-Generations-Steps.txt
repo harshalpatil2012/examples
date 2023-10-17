@@ -1,4 +1,4 @@
-Summary of AWS Cost Optimization and Redis Cost Reduction
+iiSummary of AWS Cost Optimization and Redis Cost Reduction
 
 Month	Redis Node Type	Expense Reduction (USD)	Baseline Cost (July)
 May to June	cache.mS.large	$4,770	N/A
@@ -18,3 +18,34 @@ Adoption of cache.t3.micro resulted in a significant cost reduction, with $7,095
 
 
 add positive, negative, corner case unit test and use spring boot based latest approach for above class
+
+
+permit all requests and send error details as JSON responses back to the UI when issues occur, you can use Spring Security to achieve this. Here's how you can configure Spring Security to permit all requests and customize error responses in JSON format:Create a custom exception handling component:@Component
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
+        // Customize the error response as a JSON object
+        response.setContentType("application/json");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.writeValue(response.getWriter(), "Your custom error details");
+    }
+}This component handles unauthorized requests and sends a JSON response with error details. You can customize the error message and format as needed.Configure Spring Security to permit all requests and use the custom authentication entry point:@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/**").permitAll()
+                .anyRequest().authenticated()
+            .and()
+            .exceptionHandling().authenticationEntryPoint(customAuthenticationEntryPoint)
+            .and()
+            .csrf().disable();
+    }
+}This configuration allows all requests and uses the custom AuthenticationEntryPoint to handle authentication issues and send JSON responses.
