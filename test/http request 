@@ -1,0 +1,108 @@
+import org.springframework.boot.web.reactive.filter.WebFilterChain;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+@Configuration
+public class WebFluxConfig {
+
+    private final ReactiveRequestInterceptor requestInterceptor;
+    private final ReactiveResponseInterceptor responseInterceptor;
+
+    public WebFluxConfig(ReactiveRequestInterceptor requestInterceptor, ReactiveResponseInterceptor responseInterceptor) {
+        this.requestInterceptor = requestInterceptor;
+        this.responseInterceptor = responseInterceptor;
+    }
+
+    @Bean
+    public WebFilterRegistry webFilterRegistry() {
+        return WebFilterRegistry.create();
+    }
+
+    @Bean
+    public OncePerRequestFilter requestResponseFilter(WebFilterRegistry webFilterRegistry) {
+        OncePerRequestFilter filter = new RequestResponseFilter(requestInterceptor, responseInterceptor);
+        webFilterRegistry.addFilterFirst(filter);
+        return filter;
+    }
+}
+
+
+
+import org.springframework.web.reactive.function.server.HandlerFilterFunction;
+import org.springframework.web.reactive.function.server.ServerRequest;
+import org.springframework.web.reactive.function.server.ServerResponse;
+
+import reactor.core.publisher.Mono;
+
+public class ReactiveRequestInterceptor implements HandlerFilterFunction<ServerRequest, ServerResponse> {
+
+    @Override
+    public Mono<ServerResponse> filter(ServerRequest request, HandlerFilterFunction<ServerRequest, ServerResponse> next) {
+        // Update the request URL path
+        String newPath = request.uri() + "/updated";
+        ServerRequest updatedRequest = ServerRequest.create(request.exchange(), newPath);
+
+        // Update the request parameters
+        updatedRequest = updatedRequest.queryParam("updatedParam", "updatedValue");
+
+        // Update the request payload
+        Mono<String> requestBody = request.bodyToMono(String.class);
+        requestBody = requestBody.map(body -> body.replace("old", "new"));
+
+        // Wrap the request object
+        updatedRequest = updatedRequest.body(requestBody);
+
+        // Continue processing the request
+        return next.filter(updatedRequest);
+    }
+}
+
+
+
+import org.springframework.web.reactive.function.server.HandlerFilterFunction;
+import org.springframework.web.reactive.function.server.ServerRequest;
+import org.springframework.web.reactive.function.server.ServerResponse;
+
+import reactor.core.publisher.Mono;
+
+public class ReactiveResponseInterceptor implements HandlerFilterFunction<ServerRequest, ServerResponse> {
+
+    @Override
+    public Mono<ServerResponse> filter(ServerRequest request, HandlerFilterFunction<ServerRequest, ServerResponse> next) {
+
+        // Continue processing the request
+        return next.filter(request).map(response -> {
+
+            // Update the response payload
+            Mono<String> responseBody = response.bodyToMono(String.class);
+            responseBody = responseBody.map(body -> body.replace("old", "new"));
+
+            // Wrap the response object
+            ServerResponse updatedResponse = ServerResponse.create(response.statusCode(), response.headers(), responseBody);
+
+            return updatedResponse;
+        });
+    }
+}
+
+
+spring.web.reactive.filter.add=requestResponseFilter
+
+
+
+else.
+
+Sources
+stackoverflow.com/questions/45391264/spring-boot-2-and-oauth2-jwt-configuration
+github.com/hotdogxhd/SpringCloud
+github.com/KimHyoJin/OneDayOneCommit
+github.com/eugenp/tutorialssubject to licence (MIT)
+github.com/shuigedeng/taotao-cloud-projectsubject to licence (Apache - 2.0)
+spring.io/blog/2020/03/25/spring-tips-spring-cloud-loadbalancer
+
+
+
+
