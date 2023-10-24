@@ -1,4 +1,4 @@
-import org.springframework.boot.web.reactive.filter.WebFilterChain;
+iiimport org.springframework.boot.web.reactive.filter.WebFilterChain;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -102,6 +102,38 @@ github.com/KimHyoJin/OneDayOneCommit
 github.com/eugenp/tutorialssubject to licence (MIT)
 github.com/shuigedeng/taotao-cloud-projectsubject to licence (Apache - 2.0)
 spring.io/blog/2020/03/25/spring-tips-spring-cloud-loadbalancer
+
+
+import org.springframework.boot.web.reactive.filter.WebFilterChain;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+@Configuration
+public class WebFluxConfig {
+
+    private final ReactiveRequestInterceptor requestInterceptor;
+    private final ReactiveResponseInterceptor responseInterceptor;
+
+    public WebFluxConfig(ReactiveRequestInterceptor requestInterceptor, ReactiveResponseInterceptor responseInterceptor) {
+        this.requestInterceptor = requestInterceptor;
+        this.responseInterceptor = responseInterceptor;
+    }
+
+    @Bean
+    public WebFilter requestResponseFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected Mono<Void> filterInternal(ServerWebExchange exchange, Chain chain) {
+                return requestInterceptor.filter(exchange, chain)
+                        .then(responseInterceptor.filter(exchange, chain));
+            }
+        };
+    }
+}
+
 
 
 
